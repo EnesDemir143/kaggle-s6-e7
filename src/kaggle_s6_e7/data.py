@@ -46,6 +46,8 @@ def infer_feature_columns(
 ) -> tuple[list[str], list[str]]:
     """Return categorical and numeric feature names in source-column order."""
     features = train.drop(columns=[id_col, target_col], errors="ignore")
-    cat_cols = features.select_dtypes(include=["object", "category", "string"]).columns.tolist()
+    cat_cols = features.select_dtypes(
+        include=["object", "category", "string"]
+    ).columns.tolist()
     num_cols = features.select_dtypes(include="number").columns.tolist()
     return cat_cols, num_cols

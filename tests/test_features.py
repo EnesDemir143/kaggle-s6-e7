@@ -1,18 +1,33 @@
 import numpy as np
 import pandas as pd
 
-from kaggle_s6_e7.features import (add_categorical_interactions, add_missing_features,
-                                    add_outlier_flags, add_ratio_features, fit_outlier_bounds)
+from kaggle_s6_e7.features import (
+    add_categorical_interactions,
+    add_missing_features,
+    add_outlier_flags,
+    add_ratio_features,
+    fit_outlier_bounds,
+)
 
 
 def feature_frame():
-    return pd.DataFrame({"calorie_expenditure": [100.0, 200.0, 300.0], "step_count": [0.0, np.nan, 10.0],
-                         "exercise_duration": [0.0, 10.0, 20.0], "water_intake": [1.0, 2.0, np.nan],
-                         "bmi": [20.0, 25.0, 30.0], "sleep_duration": [5.0, 7.0, 9.0],
-                         "stress_level": ["low", None, "high"], "sleep_quality": ["good", "average", None],
-                         "physical_activity_level": ["active", "moderate", "sedentary"],
-                         "diet_type": ["veg", None, "non-veg"], "smoking_alcohol": ["no", "yes", None],
-                         "gender": ["female", "male", None], "heart_rate": [55.0, 75.0, 105.0]})
+    return pd.DataFrame(
+        {
+            "calorie_expenditure": [100.0, 200.0, 300.0],
+            "step_count": [0.0, np.nan, 10.0],
+            "exercise_duration": [0.0, 10.0, 20.0],
+            "water_intake": [1.0, 2.0, np.nan],
+            "bmi": [20.0, 25.0, 30.0],
+            "sleep_duration": [5.0, 7.0, 9.0],
+            "stress_level": ["low", None, "high"],
+            "sleep_quality": ["good", "average", None],
+            "physical_activity_level": ["active", "moderate", "sedentary"],
+            "diet_type": ["veg", None, "non-veg"],
+            "smoking_alcohol": ["no", "yes", None],
+            "gender": ["female", "male", None],
+            "heart_rate": [55.0, 75.0, 105.0],
+        }
+    )
 
 
 def test_feature_builders_do_not_mutate_and_ratios_are_finite():
