@@ -1,6 +1,7 @@
 """Fold-safe implementation of the P_MAIN_V2_CORE preprocessing contract."""
 
 from collections.abc import Sequence
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -14,6 +15,7 @@ from .features import (
     add_outlier_flags,
     add_ratio_features,
     fit_outlier_bounds,
+    add_rule_features,
 )
 
 RAW_NUMERIC_COLS = [
@@ -42,6 +44,115 @@ RATIO_COLS = [
     "steps_per_sleep_hour",
 ]
 INTERACTION_COLS = ["stress_sleep_quality", "activity_diet", "smoking_activity"]
+LOG_RATIO_COLS = [f"log_{col}" for col in RATIO_COLS]
+
+
+class FoldPreprocessor(TransformerMixin, BaseEstimator):
+    """Configurable, fold-fitted preprocessing for E001-E008."""
+
+    def __init__(self, feature_config: dict[str, object]) -> None:
+        self.feature_config = feature_config
+
+    def fit(self, X: pd.DataFrame, y: object = None) -> "FoldPreprocessor":
+        del y
+        V2CorePreprocessor._validate_input(X)
+        self.numeric_medians_ = X[RAW_NUMERIC_COLS].median().to_dict()
+        prepared = self._prepare_before_outliers(X)
+        outlier_cols = [*RAW_NUMERIC_COLS]
+        if self._enabled("ratios"):
+            outlier_cols.extend(RATIO_COLS)
+        self.outlier_bounds_ = (
+            fit_outlier_bounds(prepared, outlier_cols, 0.005, 0.995)
+            if self._enabled("outlier_flags")
+            else {}
+        )
+        if self._enabled("clipping"):
+            lower = cast(float, self.feature_config.get("clip_lower_q", 0.001))
+            upper = cast(float, self.feature_config.get("clip_upper_q", 0.999))
+            self.clip_bounds_ = fit_outlier_bounds(prepared, outlier_cols, lower, upper)
+        else:
+            self.clip_bounds_ = {}
+        categorical = [*RAW_CATEGORICAL_COLS]
+        if self._enabled("categorical_interactions"):
+            categorical.extend(INTERACTION_COLS)
+        if self._enabled("gender_activity"):
+            categorical.append("gender_activity")
+        self.categorical_features_ = categorical
+        transformed = self._finish(prepared)
+        self.category_levels_ = {
+            col: sorted(set(transformed[col].astype(str))) + ["__UNKNOWN__"]
+            for col in categorical
+        }
+        transformed = self._cast_categories(transformed)
+        self.feature_names_out_ = transformed.columns.tolist()
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        self._require_fitted()
+        V2CorePreprocessor._validate_input(X)
+        transformed = self._finish(self._prepare_before_outliers(X))
+        transformed = transformed.reindex(columns=self.feature_names_out_)
+        return self._cast_categories(transformed)
+
+    def get_feature_names_out(self, input_features: object = None) -> np.ndarray:
+        del input_features
+        self._require_fitted()
+        return np.asarray(self.feature_names_out_, dtype=object)
+
+    def _enabled(self, key: str) -> bool:
+        return bool(self.feature_config.get(key, False))
+
+    def _prepare_before_outliers(self, X: pd.DataFrame) -> pd.DataFrame:
+        columns = [*RAW_NUMERIC_COLS, *RAW_CATEGORICAL_COLS]
+        result = X[columns].copy()
+        if self._enabled("missing_flags"):
+            missing = result[columns].isna()
+            for col in columns:
+                result[f"{col}_is_missing"] = missing[col].astype("int8")
+            if self._enabled("missing_count"):
+                result["missing_count"] = missing.sum(axis=1).astype("int16")
+        result[RAW_NUMERIC_COLS] = result[RAW_NUMERIC_COLS].fillna(
+            self.numeric_medians_
+        )
+        result[RAW_CATEGORICAL_COLS] = result[RAW_CATEGORICAL_COLS].fillna("missing")
+        if self._enabled("ratios"):
+            result = add_ratio_features(result)
+        if self._enabled("categorical_interactions"):
+            result = add_categorical_interactions(result, include_gender_activity=False)
+        if self._enabled("gender_activity"):
+            result["gender_activity"] = (
+                result["gender"].astype(str)
+                + "__"
+                + result["physical_activity_level"].astype(str)
+            )
+        if self._enabled("rule_flags"):
+            result = add_rule_features(result)
+        return result
+
+    def _finish(self, prepared: pd.DataFrame) -> pd.DataFrame:
+        result = prepared.copy()
+        if self.outlier_bounds_:
+            result = add_outlier_flags(result, self.outlier_bounds_)
+            if not self._enabled("outlier_count"):
+                result = result.drop(columns="outlier_count")
+        for col, (low, high) in self.clip_bounds_.items():
+            result[col] = result[col].clip(low, high)
+        if self._enabled("log_ratio"):
+            for source, output in zip(RATIO_COLS, LOG_RATIO_COLS, strict=True):
+                result[output] = np.log1p(result[source].clip(lower=0))
+        return result
+
+    def _cast_categories(self, frame: pd.DataFrame) -> pd.DataFrame:
+        result = frame.copy()
+        for col, levels in self.category_levels_.items():
+            values = result[col].astype(str)
+            result[col] = values.where(values.isin(levels), "__UNKNOWN__")
+            result[col] = pd.Categorical(result[col], categories=levels)
+        return result
+
+    def _require_fitted(self) -> None:
+        if not hasattr(self, "numeric_medians_"):
+            raise RuntimeError("FoldPreprocessor must be fitted before transform")
 
 
 class V2CorePreprocessor(TransformerMixin, BaseEstimator):

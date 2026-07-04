@@ -12,6 +12,7 @@ TEST_PATH = DATA_DIR / "test.csv"
 TARGET_COL = "health_condition"
 ID_COL = "id"
 EXPECTED_TARGETS = {"at-risk", "fit", "unhealthy"}
+CLASS_NAMES = ["at-risk", "fit", "unhealthy"]
 RANDOM_STATE = 42
 PLOT_SAMPLE_SIZE = 100_000
 

@@ -4,7 +4,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 from sklearn.metrics import (
@@ -56,6 +55,7 @@ def classification_metrics(
     row_sums = proba.sum(axis=1)
     if np.any(proba < 0) or not np.allclose(row_sums, 1.0, atol=1e-6):
         raise ValueError("probabilities must be non-negative and sum to one")
+    proba = proba / row_sums[:, np.newaxis]
     y_binary = label_binarize(y_true, classes=labels)
     per_class_auc = roc_auc_score(y_binary, proba, average=None)
     recalls = recall_score(y_true, y_pred, labels=labels, average=None, zero_division=0)
@@ -103,6 +103,8 @@ def plot_multiclass_roc(
     output_path: str | Path,
 ) -> Path:
     """Persist one-vs-rest ROC curves plus the micro-average curve."""
+    import matplotlib.pyplot as plt
+
     labels = list(class_labels)
     y_binary = label_binarize(y_true, classes=labels)
     proba = np.asarray(probabilities, dtype=float)
