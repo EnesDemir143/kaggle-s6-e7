@@ -1,0 +1,68 @@
+E001:
+  description: V1 baseline
+  model: lightgbm
+  n_splits: 3
+  seed: 42
+  features:
+    missing_flags: true
+    missing_count: false
+    ratios: false
+    categorical_interactions: false
+    gender_activity: false
+    outlier_flags: false
+    outlier_count: false
+    rule_flags: false
+    clipping: false
+    log_ratio: false
+  training:
+    class_weight_mode: null
+  postprocess:
+    multipliers: false
+
+E002:
+  description: V2-Core main
+  inherit: E001
+  features:
+    missing_count: true
+    ratios: true
+    categorical_interactions: true
+    outlier_flags: true
+    outlier_count: true
+
+E003:
+  description: V2-Core + gender_activity
+  inherit: E002
+  features:
+    gender_activity: true
+
+E004:
+  description: V2-Core + rule-based flags
+  inherit: E002
+  features:
+    rule_flags: true
+
+E005:
+  description: V2-Core + clipping 0.1/99.9
+  inherit: E002
+  features:
+    clipping: true
+    clip_lower_q: 0.001
+    clip_upper_q: 0.999
+
+E006:
+  description: V2-Core + log1p ratio variants
+  inherit: E002
+  features:
+    log_ratio: true
+
+E007:
+  description: Postprocess class multiplier tuning on E002
+  source_exp: E002
+  postprocess:
+    multipliers: true
+
+E008:
+  description: V2-Core + sqrt balanced class weights
+  inherit: E002
+  training:
+    class_weight_mode: sqrt_balanced
