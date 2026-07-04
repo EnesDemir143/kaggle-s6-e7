@@ -377,6 +377,90 @@ Recall `at-risk=0.975356`, `fit=0.887395`, `unhealthy=0.879253`.
 E008 tuned sonucu ise E002 tuned’dan biraz düşüktür; çünkü multiplier zaten karar sınırını
 ayarladığında eğitim ağırlığının ek avantajı küçülür.
 
+### Public leaderboard geri bildirimi ve yeni yön
+
+İlk beş submission, lokal argmax sıralamasından daha güçlü bir karar verdi:
+
+| Submission | Public balanced accuracy |
+|---|---:|
+| **E002 tuned** | **0.94960** |
+| E004 tuned | 0.94941 |
+| E006 tuned | 0.94905 |
+| E008 tuned | 0.94894 |
+| E008 argmax | 0.91517 |
+
+Public sonuçlar model varyantları arasındaki farktan çok class multiplier ile değiştirilen
+karar sınırının kazandırdığını gösterir. Yeni seri bu nedenle yeni feature veya geniş HPO
+yerine E002 olasılıklarını küçük blend, multiplier perturbation ve consensus düzeltmeleriyle
+değiştirir. OOF üzerinde seçilen multiplier'ların overfit riski sürdüğü için her adayın
+dağılımı ve E002 ile disagreement oranı ayrıca kaydedilir.
+
+### E009 — E002/E004 75/25 probability blend tuned
+
+**Amaç:** E002'nin güçlü karar yüzeyini koruyup E004 rule flag modelinin farklı yakaladığı
+satırlardan küçük kazanım almak.
+
+```text
+p = 0.75 * p_E002 + 0.25 * p_E004
+prediction = argmax(p * multiplier)
+```
+
+E002 multiplier'ı çevresinde `fit` ve `unhealthy` için bağımsız
+`{0.990, 1.000, 1.010}` ölçekleri OOF balanced accuracy ile taranır. Test dağılımı
+`at-risk=%81.6–81.9`, `fit=%7.1–7.3`, `unhealthy=%11.0–11.2`; E002 disagreement ise
+`%0.1–1.5` dışında kalırsa aday üretilir fakat submit için FAIL işaretlenir.
+
+### E010 — SWEEP_002 tuned
+
+**Amaç:** Argmax OOF sonucu E002'den az miktarda yüksek olan en iyi sweep modelini E002
+çevresinde kontrollü karar sınırıyla değerlendirmek.
+
+SWEEP_002 OOF/test olasılıklarına E002 multiplier tabanı uygulanır. `fit` ve `unhealthy`
+ölçekleri bağımsız olarak `{0.970, 0.985, 1.000, 1.015, 1.030}` taranır. Bu deney yeni
+HPO yapmaz; mevcut en iyi sweep artefaktını tuned karara dönüştürür.
+
+### E011 — E002/E004/E006 probability blend tuned
+
+**Amaç:** E006 log-ratio modeline yalnız `%10` ağırlık vererek üç feature görünümünün
+kararsız satırlardaki olasılıklarını yumuşatmak.
+
+OOF üzerinde `60/30/10`, `65/25/10` ve `70/20/10` ağırlıkları karşılaştırılır. Her ağırlık
+için E009 micro multiplier grid'i taranır; en yüksek OOF balanced accuracy seçilir. Test
+dağılımı `at-risk=%81.3–82.1`, `fit=%7.0–7.4`, `unhealthy=%10.8–11.4` dışında kalırsa
+submission FAIL işaretlenir.
+
+### E012 — E002 fit-up / unhealthy-down boundary
+
+**Amaç:** Borderline `at-risk/fit` satırlarını hafifçe fit'e çekerken unhealthy oranını
+şişirmemek.
+
+```text
+m_at-risk   = E002_at-risk
+m_fit       = E002_fit * 1.012
+m_unhealthy = E002_unhealthy * 0.992
+```
+
+Beklenen test bantları `at-risk=%81.55–81.75`, `fit=%7.25–7.35` ve
+`unhealthy=%10.95–11.15` olarak hard eligibility kontrolüne dönüştürülür.
+
+### E013 — E002 consensus correction
+
+**Amaç:** E002 tuned etiketini yalnız E004 tuned ve E006 tuned aynı farklı etikette
+birleştiğinde değiştirmek.
+
+```text
+if pred_E004 == pred_E006 and pred_E004 != pred_E002:
+    final = pred_E004
+else:
+    final = pred_E002
+```
+
+Aynı kural OOF üzerinde uygulanır. Submit uygunluğu için OOF balanced accuracy en az
+`0.9482`, test disagreement ise `%0.2–1.0` olmalıdır.
+
+Yeni adayların önerilen submit sırası E009, E010, E011, E012 ve E013'tür. Eski argmax
+submission'lar bu serinin parçası değildir.
+
 ## 5. LightGBM parameter sweep deneyleri
 
 Sweep, E002 feature pipeline’ını sabit tutup şu parametreleri değiştirir: learning rate,
@@ -464,5 +548,7 @@ Tüm parametreler, skorlar ve sıralama `final-experiment-report.md` içinde ver
 - Fold-safe preprocessing: `src/kaggle_s6_e7/preprocessing.py`
 - CV ve eğitim: `src/kaggle_s6_e7/training.py`
 - Multiplier araması: `src/kaggle_s6_e7/postprocess.py`
+- E009–E013 tarifleri: `configs/postprocess_experiments.yaml`
+- Ensemble ve eligibility motoru: `src/kaggle_s6_e7/candidate_experiments.py`
 - Gerçekleşmiş sonuçlar: `outputs/experiments/<EXP_ID>/`
 - Lokal sıralama: `outputs/leaderboard_local.csv`

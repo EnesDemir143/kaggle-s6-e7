@@ -1,0 +1,66 @@
+base_experiment: E002
+
+experiments:
+  E009:
+    kind: blend_tuned
+    output_dir: E009_blend_E002_E004_75_25
+    sources:
+      E002: 0.75
+      E004: 0.25
+    multiplier_source: E002
+    scales: [0.99, 1.0, 1.01]
+    submission_name: submission_tuned.csv
+    eligibility:
+      distribution_bounds:
+        at-risk: [0.816, 0.819]
+        fit: [0.071, 0.073]
+        unhealthy: [0.110, 0.112]
+      disagreement_bounds: [0.001, 0.015]
+
+  E010:
+    kind: source_tuned
+    output_dir: E010_SWEEP_002_tuned
+    source: SWEEP_002
+    multiplier_source: E002
+    scales: [0.97, 0.985, 1.0, 1.015, 1.03]
+    submission_name: submission_tuned.csv
+    eligibility: {}
+
+  E011:
+    kind: blend_tuned
+    output_dir: E011_blend_E002_E004_E006
+    weight_options:
+      - {E002: 0.60, E004: 0.30, E006: 0.10}
+      - {E002: 0.65, E004: 0.25, E006: 0.10}
+      - {E002: 0.70, E004: 0.20, E006: 0.10}
+    multiplier_source: E002
+    scales: [0.99, 1.0, 1.01]
+    submission_name: submission_tuned.csv
+    eligibility:
+      distribution_bounds:
+        at-risk: [0.813, 0.821]
+        fit: [0.070, 0.074]
+        unhealthy: [0.108, 0.114]
+
+  E012:
+    kind: fixed_multiplier
+    output_dir: E012_E002_fit_up_unhealthy_down
+    source: E002
+    multiplier_source: E002
+    scales: [1.0, 1.012, 0.992]
+    submission_name: submission.csv
+    eligibility:
+      distribution_bounds:
+        at-risk: [0.8155, 0.8175]
+        fit: [0.0725, 0.0735]
+        unhealthy: [0.1095, 0.1115]
+
+  E013:
+    kind: consensus
+    output_dir: E013_E002_consensus_correction
+    base: E002
+    voters: [E004, E006]
+    submission_name: submission.csv
+    eligibility:
+      min_oof_score: 0.9482
+      disagreement_bounds: [0.002, 0.010]
