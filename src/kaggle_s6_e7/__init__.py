@@ -9,6 +9,7 @@ from .features import (
     add_rule_features,
     fit_outlier_bounds,
 )
+from .preprocessing import V2CorePreprocessor, build_one_hot_encoder
 
 __all__ = [
     "add_categorical_interactions",
@@ -20,4 +21,6 @@ __all__ = [
     "infer_feature_columns",
     "load_competition_data",
     "validate_schema",
+    "V2CorePreprocessor",
+    "build_one_hot_encoder",
 ]

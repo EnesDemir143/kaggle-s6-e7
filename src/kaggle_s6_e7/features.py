@@ -35,7 +35,9 @@ def add_missing_features(df: pd.DataFrame, cols: Iterable[str]) -> pd.DataFrame:
     return result
 
 
-def add_categorical_interactions(df: pd.DataFrame) -> pd.DataFrame:
+def add_categorical_interactions(
+    df: pd.DataFrame, *, include_gender_activity: bool = True
+) -> pd.DataFrame:
     """Add explicit lifestyle-category interactions."""
     result = df.copy()
     pairs = {
@@ -44,9 +46,14 @@ def add_categorical_interactions(df: pd.DataFrame) -> pd.DataFrame:
         "smoking_activity": ("smoking_alcohol", "physical_activity_level"),
         "gender_activity": ("gender", "physical_activity_level"),
     }
+    if not include_gender_activity:
+        pairs.pop("gender_activity")
     for output, (left, right) in pairs.items():
-        result[output] = (result[left].fillna("missing").astype(str) + "__" +
-                          result[right].fillna("missing").astype(str))
+        result[output] = (
+            result[left].fillna("missing").astype(str)
+            + "__"
+            + result[right].fillna("missing").astype(str)
+        )
     return result
 
 
@@ -68,15 +75,21 @@ def add_rule_features(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def fit_outlier_bounds(train: pd.DataFrame, cols: Iterable[str], lower_q: float = 0.005,
-                       upper_q: float = 0.995) -> dict[str, tuple[float, float]]:
+def fit_outlier_bounds(
+    train: pd.DataFrame,
+    cols: Iterable[str],
+    lower_q: float = 0.005,
+    upper_q: float = 0.995,
+) -> dict[str, tuple[float, float]]:
     """Learn quantile bounds from train only."""
     if not 0 <= lower_q < upper_q <= 1:
         raise ValueError("Expected 0 <= lower_q < upper_q <= 1")
     return {col: tuple(train[col].quantile([lower_q, upper_q])) for col in cols}
 
 
-def add_outlier_flags(df: pd.DataFrame, bounds: Mapping[str, tuple[float, float]]) -> pd.DataFrame:
+def add_outlier_flags(
+    df: pd.DataFrame, bounds: Mapping[str, tuple[float, float]]
+) -> pd.DataFrame:
     """Apply fitted bounds and add row-level outlier count."""
     result, flag_cols = df.copy(), []
     for col, (low, high) in bounds.items():

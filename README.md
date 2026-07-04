@@ -1,6 +1,26 @@
-# Kaggle Playground Series S6E7 — EDA Workspace
+# Kaggle Playground Series S6E7 — EDA ve Modelleme Workspace
 
 Bu depo model eğitiminden önce veri, missingness, distribution shift, outlier ve feature engineering kararlarını belgeler.
+
+## Ana preprocessing: P_MAIN_V2_CORE
+
+Fold içinde `V2CorePreprocessor.fit(fold_train)` çağrılır; median ve %0.5/%99.5
+outlier eşikleri yalnız fold-train'den öğrenilir. Gender interaction, rule flag ve
+clipping ana pipeline'a dahil değildir.
+
+```python
+from kaggle_s6_e7.preprocessing import V2CorePreprocessor
+
+preprocessor = V2CorePreprocessor()
+X_fold_train = preprocessor.fit_transform(X_fold_train_raw)
+X_fold_valid = preprocessor.transform(X_fold_valid_raw)
+```
+
+Tüm train üzerinde model-ready artefakt üretmek için:
+
+```bash
+uv run python scripts/prepare_v2_core.py
+```
 
 ## Kurulum
 
