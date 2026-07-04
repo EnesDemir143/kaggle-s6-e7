@@ -1,0 +1,7 @@
+feature,total_variation_distance,train_unique,test_unique,test_only_categories
+gender,0.03309241753194714,4,4,[]
+physical_activity_level,0.008563205958345674,4,4,[]
+smoking_alcohol,0.00204251489807147,4,4,[]
+sleep_quality,0.0013301456178841237,4,4,[]
+stress_level,0.0012154660930513914,4,4,[]
+diet_type,0.0008262824190574895,4,4,[]
