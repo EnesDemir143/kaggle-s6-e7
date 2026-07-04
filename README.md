@@ -22,6 +22,10 @@ Tüm train üzerinde model-ready artefakt üretmek için:
 uv run python scripts/prepare_v2_core.py
 ```
 
+`kaggle_s6_e7.evaluation` modülü balanced accuracy, MCC, macro/weighted F1,
+precision/recall, multiclass log-loss, OvR macro/weighted ROC-AUC, sınıf recall/AUC,
+confusion matrix, OOF tahmin dağılımı ve ROC grafiği üretir.
+
 ## Kurulum
 
 ```bash
