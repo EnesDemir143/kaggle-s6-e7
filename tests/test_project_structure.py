@@ -4,7 +4,7 @@ import subprocess
 
 def test_required_workflow_directories_exist():
     root = Path(__file__).resolve().parents[1]
-    required = ["scripts", "experiments", "submissions"]
+    required = ["scripts", "outputs/experiments", "submissions"]
     assert all((root / path).is_dir() for path in required)
 
 
