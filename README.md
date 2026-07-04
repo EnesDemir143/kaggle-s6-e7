@@ -59,4 +59,9 @@ Bu komut pytest, Ruff, Mypy ve Python bytecode derleme kontrolünü birlikte ça
 
 ## Deney düzeni
 
-Deneyler `E001`, `E002`, … biçiminde planlanacak. Kayıt ve artefaktlar `experiments/E###/`, submission CSV dosyaları `submissions/E###_submission.csv` altında tutulacak. Ayrıntılı sözleşmeler klasör README'lerinde ve `.agents/rules/` altında tanımlıdır.
+Deneyler `E001`, `E002`, … biçimindedir. Config'ler `configs/`, kayıt ve artefaktlar
+`outputs/experiments/E###/`, fold feature cache'i `outputs/cache/` altında tutulur.
+Komutlar ve çalışma sırası için [`docs/experiment-runbook.md`](docs/experiment-runbook.md)
+dosyasını kullanın.
+Deneylerin ayrıntılı hipotez ve submission seçim kuralları
+[`docs/experiment-execution-guide.md`](docs/experiment-execution-guide.md) içindedir.
