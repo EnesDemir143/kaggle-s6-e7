@@ -170,16 +170,38 @@ uv run python scripts/check.py
 
 ## Submission Files
 
-| Experiment | File | LB |
-|:-----------|:-----|:---|
-| E002 tuned | `outputs/experiments/E002/submission_tuned.csv` | **0.94960** |
-| E011 blend | `outputs/experiments/E011_blend_E002_E004_E006/submission.csv` | 0.94957 |
-| E009 blend | `outputs/experiments/E009_blend_E002_E004_75_25/submission.csv` | 0.94948 |
-| E004 tuned | `outputs/experiments/E004/submission_tuned.csv` | 0.94941 |
-| E006 tuned | `outputs/experiments/E006/submission_tuned.csv` | 0.94905 |
-| E010 tuned | `outputs/experiments/E010_SWEEP_002_tuned/submission.csv` | 0.94901 |
-| E008 tuned | `outputs/experiments/E008/submission_tuned.csv` | 0.94894 |
-| E008 argmax | `outputs/experiments/E008/submission_argmax.csv` | 0.91517 |
+All generated submissions under `outputs/experiments/`.
+
+### E001–E008 — Training experiments
+
+| Experiment | Files | Submitted (LB) |
+|:-----------|:------|:---------------|
+| E001 | `submission_argmax.csv` | — |
+| E002 | `submission_argmax.csv`, `submission_tuned.csv`, `submission_E002_argmax.csv`, `submission_E002_tuned.csv` | **tuned: 0.94960** |
+| E003 | `submission_argmax.csv` | — |
+| E004 | `submission_argmax.csv`, `submission_tuned.csv`, `submission_E004_argmax.csv`, `submission_E004_tuned.csv` | tuned: 0.94941 |
+| E005 | `submission_argmax.csv` | — |
+| E006 | `submission_argmax.csv`, `submission_tuned.csv`, `submission_E006_argmax.csv`, `submission_E006_tuned.csv` | tuned: 0.94905 |
+| E008 | `submission_argmax.csv`, `submission_tuned.csv`, `submission_E008_argmax.csv`, `submission_E008_tuned.csv` | argmax: 0.91517, tuned: 0.94894 |
+
+### E009–E017 — Postprocess experiments
+
+| Experiment | File | Submitted (LB) |
+|:-----------|:-----|:---------------|
+| E009 (75/25 blend) | `submission_tuned.csv` | 0.94948 |
+| E010 (SWEEP_002 tuned) | `submission_tuned.csv` | 0.94901 |
+| E011 (60/30/10 blend) | `submission_tuned.csv` | **0.94957** |
+| E012 (fit-up / unhealthy-down) | `submission.csv` | — |
+| E013 (consensus correction) | `submission.csv` | — |
+| E014 (softer multiplier) | `submission.csv` | — |
+| E015 (70/20/10 blend) | `submission.csv` | — |
+| E016 (micro-multiplier) | *(no submission — all candidates filtered out)* | — |
+| E017 (margin correction) | `submission.csv` | — |
+
+### Sweep trials (SWEEP_000–SWEEP_019)
+
+Each sweep trial produces `submission_argmax.csv`.  
+Best sweep on LB: **E010** (SWEEP_002 tuned) → **0.94901**.
 
 ---
 
