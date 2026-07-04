@@ -1,0 +1,44 @@
+base_experiment: E002
+report_stem: e017_eligibility_report
+
+experiments:
+  E017:
+    kind: selective_margin_correction
+    output_dir: E017_E002_selective_margin_correction
+    base: E002
+    alternative_sources:
+      E011:
+        weights: {E002: 0.60, E004: 0.30, E006: 0.10}
+        multiplier_source: E002
+        multiplier_scales: [1.0, 1.01, 1.01]
+      E014:
+        weights: {E002: 0.60, E004: 0.30, E006: 0.10}
+        multiplier_source: E002
+        multiplier_scales: [1.0, 1.005, 1.005]
+      E009:
+        weights: {E002: 0.75, E004: 0.25}
+        multiplier_source: E002
+        multiplier_scales: [1.0, 1.01, 1.01]
+      E004:
+        source: E004
+        multiplier_source: E004
+        multiplier_scales: [1.0, 1.0, 1.0]
+    directions:
+      - [at-risk, fit]
+      - [at-risk, unhealthy]
+      - [fit, at-risk]
+      - [unhealthy, at-risk]
+      - [fit, unhealthy]
+      - [unhealthy, fit]
+    base_margin_quantiles: [0.10, 0.20, 0.30, 0.40, 0.50]
+    alt_gain_quantiles: [0.50, 0.60, 0.70, 0.80]
+    min_alt_margins: [0.000, 0.005, 0.010]
+    selection_filters:
+      min_oof_score: 0.94860
+      disagreement_bounds: [0.00025, 0.00120]
+      changed_test_rows: [75, 350]
+      max_test_count_difference:
+        at-risk: 150
+        fit: 100
+        unhealthy: 150
+    submission_name: submission.csv

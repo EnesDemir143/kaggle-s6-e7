@@ -1,0 +1,32 @@
+base_experiment: E002
+report_stem: e014_e015_eligibility_report
+
+experiments:
+  E014:
+    kind: blend_tuned
+    output_dir: E014_E011_less_aggressive_multiplier
+    sources:
+      E002: 0.60
+      E004: 0.30
+      E006: 0.10
+    multiplier_source: E002
+    # M0, M1 and M2 from the experiment proposal. This intentionally is
+    # not a Cartesian grid: unhealthy-only +0.5% is outside the hypothesis.
+    scale_pairs:
+      - [1.000, 1.000]
+      - [1.005, 1.005]
+      - [1.005, 1.000]
+    submission_name: submission.csv
+    eligibility: {}
+
+  E015:
+    kind: blend_tuned
+    output_dir: E015_blend_E002_E004_E006_70_20_10
+    sources:
+      E002: 0.70
+      E004: 0.20
+      E006: 0.10
+    multiplier_source: E002
+    scales: [1.000, 1.005, 1.010]
+    submission_name: submission.csv
+    eligibility: {}

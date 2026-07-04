@@ -1,0 +1,20 @@
+base_experiment: E002
+report_stem: e016_eligibility_report
+
+experiments:
+  E016:
+    kind: source_tuned_filtered
+    output_dir: E016_E002_rare_class_tiny_boost
+    source: E002
+    multiplier_source: E002
+    candidates:
+      - [A, 1.0025, 1.0025]
+      - [B, 1.0050, 1.0050]
+      - [C, 1.0075, 1.0075]
+      - [D, 1.0050, 1.0000]
+      - [E, 1.0000, 1.0050]
+    selection_filters:
+      min_oof_score: 0.94855
+      # Fractions: 0.0003 = 0.03%, 0.0012 = 0.12%.
+      disagreement_bounds: [0.0003, 0.0012]
+    submission_name: submission.csv
