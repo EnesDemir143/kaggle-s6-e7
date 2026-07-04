@@ -25,11 +25,14 @@
 
 | Approach | CV (OOF) | Public LB |
 |:---------|---------:|----------:|
-| 🔹 V2-Core + sqrt-balanced weights (E008) | 0.9140 ± 0.0011 | 0.91517 |
-| 🔸 **V2-Core + class multiplier tuning (E002_tuned)** | **0.9486** | **0.94960** |
-| 🔸 V2-Core + rule flags + tuning (E004_tuned) | 0.9482 | 0.94941 |
-| 🔸 V2-Core + log ratios + tuning (E006_tuned) | 0.9483 | 0.94905 |
-| 🔸 V2-Core + sqrt-balanced + tuning (E008_tuned) | 0.9478 | 0.94894 |
+| 🔸 **E002_tuned** (V2-Core + multiplier tuning) | **0.9486** | **0.94960** |
+| 🔸 E011_blend (60% E002 + 30% E004 + 10% E006) | 0.9487 | 0.94957 |
+| 🔸 E009_blend (75% E002 + 25% E004) | 0.9486 | 0.94948 |
+| 🔸 E004_tuned (V2-Core + rule flags + tuning) | 0.9482 | 0.94941 |
+| 🔸 E006_tuned (V2-Core + log ratios + tuning) | 0.9483 | 0.94905 |
+| 🔸 E010_SWEEP_002_tuned | 0.9484 | 0.94901 |
+| 🔸 E008_tuned (V2-Core + sqrt-weights + tuning) | 0.9478 | 0.94894 |
+| 🔹 E008_argmax (V2-Core + sqrt-balanced weights) | **0.9140** | 0.91517 |
 
 Detailed breakdown in [`LEADERBOARD.md`](LEADERBOARD.md).
 
@@ -38,128 +41,145 @@ Detailed breakdown in [`LEADERBOARD.md`](LEADERBOARD.md).
 ## Repository Structure
 
 ```
-├── configs/                  ← Experiment YAML configs
-│   ├── experiments.yaml      ← E001–E008 feature definitions
-│   ├── lgbm_base.yaml        ← LightGBM hyperparameters
-│   └── sweeps.yaml           ← Sweep search space
+├── configs/
+│   ├── experiments.yaml              ← E001–E008 feature definitions
+│   ├── lgbm_base.yaml                ← LightGBM hyperparameters
+│   ├── sweeps.yaml                   ← Sweep search space
+│   ├── postprocess_experiments.yaml  ← E009–E013 configs
+│   ├── e014_e015_experiments.yaml    ← E014–E015 blend configs
+│   ├── e016_experiment.yaml          ← E016 micro-multiplier config
+│   └── e017_experiment.yaml          ← E017 margin correction config
 │
-├── src/kaggle_s6_e7/         ← Core Python library
-│   ├── cache.py              ← Content-addressed Parquet cache
-│   ├── config.py             ← Paths & constants
-│   ├── data.py               ← Schema validation
-│   ├── evaluation.py         ← Multi-class metrics + ROC plots
-│   ├── experiment_config.py  ← YAML loading + config inheritance
-│   ├── features.py           ← Feature engineering functions
-│   ├── postprocess.py        ← Class multiplier tuning
-│   └── training.py           ← 3-fold CV experiment runner
+├── src/kaggle_s6_e7/                 ← Core Python library
+│   ├── cache.py                      ← Content-addressed Parquet cache
+│   ├── candidate_experiments.py      ← Postprocess experiment engine
+│   ├── config.py                     ← Paths & constants
+│   ├── data.py                       ← Schema validation
+│   ├── ensemble.py                   ← Blend, multiplier search, disagreement
+│   ├── evaluation.py                 ← Multi-class metrics + ROC plots
+│   ├── experiment_config.py          ← YAML loading + config inheritance
+│   ├── features.py                   ← Feature engineering functions
+│   ├── postprocess.py                ← Class multiplier tuning
+│   └── training.py                   ← 3-fold CV experiment runner
 │
-├── scripts/                  ← Pipeline entry points
-│   ├── run_experiment.py     ← Train one experiment
-│   ├── run_sweep.py          ← LightGBM parameter sweep
-│   ├── tune_multipliers.py   ← OOF class multiplier search
-│   ├── make_submission.py    ← Generate submission CSV
-│   ├── compare_experiments.py ← Build local leaderboard
-│   ├── experiment_runner.sh  ← Full orchestration pipeline
-│   ├── dry_run_pipeline.sh   ← Small-data validation
-│   └── check.py              ← Quality gate suite
+├── scripts/
+│   ├── run_experiment.py             ← Train one ablation experiment
+│   ├── run_sweep.py                  ← LightGBM parameter sweep
+│   ├── tune_multipliers.py           ← OOF class multiplier search
+│   ├── make_submission.py            ← Generate submission CSV
+│   ├── compare_experiments.py        ← Build local leaderboard
+│   ├── experiment_runner.sh          ← Full ablation + sweep pipeline
+│   ├── dry_run_pipeline.sh           ← Small-data validation
+│   ├── run_postprocess_experiments.sh ← E009–E013 pipeline
+│   ├── dry_run_postprocess_experiments.sh
+│   ├── generate_postprocess_experiments.py
+│   ├── run_e014_e015_experiments.sh
+│   ├── run_e016_experiment.sh
+│   ├── run_e017_experiment.sh
+│   ├── generate_experiment_report.py ← PDF report generation
+│   └── check.py                      ← Quality gate suite
 │
 ├── docs/
-│   ├── experiment-runbook.md       ← Quick command reference
-│   └── experiment-execution-guide.md ← Hypothesis & submission rules
+│   ├── experiment-runbook.md                ← Quick command reference
+│   ├── experiment-execution-guide.md         ← Hypothesis & submission rules
+│   ├── experiments-detailed-explanation.md   ← All experiments explained
+│   ├── final-experiment-report.md            ← Final PDF report source
+│   ├── e009-e013-postprocess-pipeline-results.md
+│   ├── e014-e015-micro-blend-experiments.md
+│   ├── e016-e002-rare-class-micro-multiplier-results.md
+│   ├── e017-selective-margin-correction-results.md
+│   └── rules/
 │
-├── outputs/                  ← All generated artifacts (gitignored)
-│   ├── experiments/          ← Per-experiment: metrics, models, submissions
-│   ├── cache/                ← Fold feature Parquet cache
-│   └── logs/                 ← Pipeline logs
-│
-├── tests/                    ← pytest suite (17 tests)
-├── LEADERBOARD.md            ← Full CV and public LB scores
-└── README.md                 ← This file
+├── tests/                   ← pytest suite
+├── LEADERBOARD.md           ← Full CV + public LB scores
+├── LICENSE                  ← MIT
+└── README.md
 ```
 
 ---
 
-## Pipeline
+## Experiment Catalogue
 
-### Quick start
+### E001–E008 — Feature Ablation (LightGBM)
 
-```bash
-# Setup
-uv sync --dev
+| ID | Feature Set | Sample Weight | Postprocess | Best LB |
+|:---|:------------|:--------------|:------------|:--------|
+| E001 | V1 baseline (median + missing flags) | — | — | — |
+| E002 | V2-Core (ratios, interactions, outlier flags) | — | ✅ multiplier | **0.94960** |
+| E003 | V2-Core + gender×activity interaction | — | — | — |
+| E004 | V2-Core + BMI/sleep/HR/step rule flags | — | ✅ multiplier | 0.94941 |
+| E005 | V2-Core + clip 0.1%/99.9% | — | — | — |
+| E006 | V2-Core + log1p ratio variants | — | ✅ multiplier | 0.94905 |
+| E008 | V2-Core (same features as E002) | `sqrt_balanced` | ✅ multiplier | 0.94894 |
 
-# Full pipeline (training → leaderboard → multiplier tuning → sweep)
-bash scripts/experiment_runner.sh
+Key finding: **E008 (sample weights)** outperformed all other feature additions by **+0.037** in CV.
 
-# Dry-run (small data, seconds)
-bash scripts/dry_run_pipeline.sh
-```
+### E009–E017 — Postprocess (no new training)
 
-### Step by step
+| ID | Method | OOF | LB |
+|:---|:-------|:----|:---|
+| E009 | 75% E002 + 25% E004 blend + multiplier | 0.948639 | 0.94948 |
+| E010 | SWEEP_002 + E002 multiplier style | 0.948392 | 0.94901 |
+| E011 | **60% E002 + 30% E004 + 10% E006 blend + multiplier** | **0.948654** | **0.94957** |
+| E012 | E002 fit-up / unhealthy-down boundary perturbation | 0.948540 | — |
+| E013 | Consensus: pick E004 label only when E004=E006≠E002 | 0.948418 | — |
+| E014 | E011 with softer multiplier (closer to E002) | 0.948654 | — |
+| E015 | 70% E002 + 20% E004 + 10% E006 blend | 0.948614 | — |
+| E016 | Rare-class micro-multiplier (±0.25%–0.75%) | —¹ | — |
+| E017 | Selective margin correction (E004→unhealthy where confident) | 0.948658 | — |
 
-```bash
-# Train all 7 ablation experiments
-uv run python scripts/run_experiment.py --exp E002
-
-# OOF multiplier tuning
-uv run python scripts/tune_multipliers.py --exp E002
-
-# Generate submissions
-uv run python scripts/make_submission.py --exp E002 --postprocess argmax
-uv run python scripts/make_submission.py --exp E002 --postprocess multipliers
-
-# Parameter sweep on chosen base experiment
-uv run python scripts/run_sweep.py --base-exp E002 --n-trials 20
-
-# Build local leaderboard
-uv run python scripts/compare_experiments.py --output outputs/leaderboard_local.csv
-```
-
-### Quality gates
-
-```bash
-uv run python scripts/check.py
-# Runs: pytest → ruff → mypy → compileall
-```
-
----
-
-## Experiments
-
-| ID | Description | Feature Set | Sample Weights | Multiplier Tuned |
-|:---|:------------|:------------|:---------------|:----------------:|
-| E001 | V1 baseline | Median imputation + missing flags | — | No |
-| E002 | V2-Core main | Ratios, interactions, outlier flags | — | **Yes** |
-| E003 | V2-Core + gender interaction | + gender×activity | — | No |
-| E004 | V2-Core + rule flags | + sleep/BMI/HR/steps thresholds | — | **Yes** |
-| E005 | V2-Core + clipping | Clip 0.1%/99.9% | — | No |
-| E006 | V2-Core + log ratios | + log1p ratio variants | — | **Yes** |
-| E008 | V2-Core + balanced weights | Same as E002 | `sqrt_balanced` | **Yes** |
-
-Key finding: **Sample weights (E008)** outperform all other feature additions by **+0.037** in CV.  
-Class multiplier tuning raises all models to **~0.948–0.949** LB regardless of base performance.
+¹E016 produced no submission — all 5 candidates failed the disagreement filter.
 
 ---
 
 ## Key Design Decisions
 
-- **Stratified 3-fold CV** with fixed seed 42
-- **Feature statistics** learned only on fold-train (no data leakage)
-- **Content-addressed Parquet cache** for fold features (automatic cache invalidation)
+- **Stratified 3-fold CV** with fixed seed 42 — deterministic splits
+- **Feature statistics** learned only on fold-train (no leakage)
+- **Content-addressed Parquet cache** — automatic invalidation on data/config change
 - **OOF-only class multiplier tuning** — never touches test labels
-- **Deterministic LightGBM** (`random_state=42`, `deterministic=true`, all seeds pinned)
-- **Per-fold extended artifacts** — per-fold test probs, OOF probs, loss history, ROC curves
+- **Deterministic LightGBM** — `random_state=42`, `deterministic=true`, all seeds pinned
+- **Eligibility filters** on postprocess candidates — prevent near-identical submissions
+- **Per-fold extended artifacts** — per-fold test probs, OOF probs, training loss history, ROC curves
+
+---
+
+## Pipeline
+
+```bash
+# Setup
+uv sync --dev
+
+# Full ablation + sweep
+bash scripts/experiment_runner.sh
+
+# Postprocess pipeline (blends, corrections)
+bash scripts/run_postprocess_experiments.sh
+
+# Individual steps
+uv run python scripts/run_experiment.py --exp E002
+uv run python scripts/tune_multipliers.py --exp E002
+uv run python scripts/make_submission.py --exp E002 --postprocess multipliers
+uv run python scripts/compare_experiments.py --output outputs/leaderboard_local.csv
+
+# Quality gates
+uv run python scripts/check.py
+```
 
 ---
 
 ## Submission Files
 
-Generated under `outputs/experiments/<EXP>/`:
-
-| File | Description |
-|:-----|:------------|
-| `submission_argmax.csv` | Direct argmax prediction |
-| `submission_tuned.csv` | Postprocessed with OOF-tuned class multipliers |
-| `submission_<EXP>_<type>.csv` | Copy in project root with descriptive name |
+| Experiment | File | LB |
+|:-----------|:-----|:---|
+| E002 tuned | `outputs/experiments/E002/submission_tuned.csv` | **0.94960** |
+| E011 blend | `outputs/experiments/E011_blend_E002_E004_E006/submission.csv` | 0.94957 |
+| E009 blend | `outputs/experiments/E009_blend_E002_E004_75_25/submission.csv` | 0.94948 |
+| E004 tuned | `outputs/experiments/E004/submission_tuned.csv` | 0.94941 |
+| E006 tuned | `outputs/experiments/E006/submission_tuned.csv` | 0.94905 |
+| E010 tuned | `outputs/experiments/E010_SWEEP_002_tuned/submission.csv` | 0.94901 |
+| E008 tuned | `outputs/experiments/E008/submission_tuned.csv` | 0.94894 |
+| E008 argmax | `outputs/experiments/E008/submission_argmax.csv` | 0.91517 |
 
 ---
 
