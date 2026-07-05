@@ -299,3 +299,37 @@ def test_candidate_suite_rejects_misaligned_oof_ids(tmp_path):
 
     with pytest.raises(ValueError, match="OOF IDs"):
         run_candidate_suite(config_path, source_root, tmp_path / "out")
+
+
+def test_blend_scales_are_applied_on_top_of_e002_multipliers(tmp_path):
+    source_root = tmp_path / "sources"
+    labels = np.array(["at-risk", "fit", "unhealthy"])
+    proba = np.eye(3)
+    _write_source(source_root, "E002", proba, proba[:2], labels)
+    _write_source(source_root, "E019", proba, proba[:2], labels)
+    base = {"at-risk": 0.18923, "fit": 1.44445, "unhealthy": 1.36632}
+    (source_root / "E002" / "best_multipliers.json").write_text(
+        __import__("json").dumps(base)
+    )
+    config = {
+        "base_experiment": "E002",
+        "experiments": {
+            "E021": {
+                "kind": "blend_tuned",
+                "output_dir": "E021",
+                "sources": {"E002": 0.95, "E019": 0.05},
+                "multiplier_source": "E002",
+                "scale_pairs": [[1.005, 1.010]],
+                "submission_name": "submission.csv",
+            }
+        },
+    }
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(config))
+    run_candidate_suite(path, source_root, tmp_path / "out")
+    metrics = __import__("json").loads(
+        (tmp_path / "out" / "E021" / "metrics.json").read_text()
+    )
+    assert metrics["multipliers"][0] == pytest.approx(base["at-risk"])
+    assert metrics["multipliers"][1] != pytest.approx(1.005)
+    assert (tmp_path / "out" / "E021" / "risk_summary.json").is_file()
