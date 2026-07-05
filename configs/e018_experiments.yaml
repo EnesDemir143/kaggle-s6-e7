@@ -1,0 +1,82 @@
+base_experiment: E002
+report_stem: e018_eligibility_report
+
+experiments:
+  E018A:
+    kind: blend_tuned
+    output_dir: E018A_blend_90_08_02
+    sources:
+      E002: 0.90
+      E004: 0.08
+      E006: 0.02
+    multiplier_source: E002
+    scales: [0.96, 0.98, 0.99, 1.00, 1.01, 1.02, 1.04]
+    submission_name: submission_tuned.csv
+    eligibility:
+      distribution_bounds:
+        at-risk: [0.810, 0.822]
+        fit: [0.069, 0.075]
+        unhealthy: [0.108, 0.115]
+
+  E018B:
+    kind: blend_tuned
+    output_dir: E018B_blend_88_10_02
+    sources:
+      E002: 0.88
+      E004: 0.10
+      E006: 0.02
+    multiplier_source: E002
+    scales: [0.96, 0.98, 0.99, 1.00, 1.01, 1.02, 1.04]
+    submission_name: submission_tuned.csv
+    eligibility:
+      distribution_bounds:
+        at-risk: [0.810, 0.822]
+        fit: [0.069, 0.075]
+        unhealthy: [0.108, 0.115]
+
+  E018C:
+    kind: blend_tuned
+    output_dir: E018C_blend_85_12_03
+    sources:
+      E002: 0.85
+      E004: 0.12
+      E006: 0.03
+    multiplier_source: E002
+    scales: [0.96, 0.98, 0.99, 1.00, 1.01, 1.02, 1.04]
+    submission_name: submission_tuned.csv
+    eligibility:
+      distribution_bounds:
+        at-risk: [0.810, 0.822]
+        fit: [0.069, 0.075]
+        unhealthy: [0.108, 0.115]
+
+  E018D:
+    kind: blend_tuned
+    output_dir: E018D_blend_92_06_02
+    sources:
+      E002: 0.92
+      E004: 0.06
+      E006: 0.02
+    multiplier_source: E002
+    scales: [0.96, 0.98, 0.99, 1.00, 1.01, 1.02, 1.04]
+    submission_name: submission_tuned.csv
+    eligibility:
+      distribution_bounds:
+        at-risk: [0.810, 0.822]
+        fit: [0.069, 0.075]
+        unhealthy: [0.108, 0.115]
+
+  E018E:
+    kind: blend_tuned
+    output_dir: E018E_blend_95_05
+    sources:
+      E002: 0.95
+      E004: 0.05
+    multiplier_source: E002
+    scales: [0.96, 0.98, 0.99, 1.00, 1.01, 1.02, 1.04]
+    submission_name: submission_tuned.csv
+    eligibility:
+      distribution_bounds:
+        at-risk: [0.810, 0.822]
+        fit: [0.069, 0.075]
+        unhealthy: [0.108, 0.115]
