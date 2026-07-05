@@ -6,7 +6,6 @@ import platform
 from pathlib import Path
 from typing import Any
 
-import lightgbm as lgb
 import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, confusion_matrix
@@ -20,6 +19,7 @@ from .evaluation import (
     plot_multiclass_roc,
     predictions_from_probabilities,
 )
+from .model_adapters import create_model_adapter
 from .preprocessing import FoldPreprocessor
 
 log = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ def run_cv_experiment(
     importances: list[pd.DataFrame] = []
     cache_keys: list[str] = []
     data_fingerprint = {"train": file_fingerprint(train_path), "test": file_fingerprint(test_path)}
-    early_stopping = int(model_params.pop("early_stopping_rounds"))
+    model_name = str(experiment.get("model", "lightgbm"))
 
     log.info(
         "Starting experiment %s | %d-fold CV | seed=%s | features=%s",
@@ -91,7 +91,7 @@ def run_cv_experiment(
         cache_key = cache.key(
             data={**data_fingerprint, "train_indices": stable_hash(train_idx.tolist())},
             fold=fold,
-            config=experiment["features"],
+            config={"features": experiment["features"], "model": model_name},
         )
         cache_keys.append(cache_key)
         cached = cache.load(cache_key)
@@ -104,35 +104,22 @@ def run_cv_experiment(
             cache.save(cache_key, X_train, X_valid, X_fold_test)
         else:
             X_train, X_valid, X_fold_test = cached
-        model = lgb.LGBMClassifier(**model_params)
+        model = create_model_adapter(model_name, model_params)
         model.fit(
             X_train,
             y_encoded[train_idx],
-            sample_weight=sample_weights(y.iloc[train_idx], experiment["training"].get("class_weight_mode")),
-            eval_set=[(X_valid, y_encoded[valid_idx])],
-            eval_metric="multi_logloss",
-            categorical_feature="auto",
-            callbacks=[lgb.early_stopping(early_stopping, first_metric_only=True, verbose=False)],
+            X_valid,
+            y_encoded[valid_idx],
+            sample_weights(y.iloc[train_idx], experiment["training"].get("class_weight_mode")),
         )
-        # Capture per-fold training loss history
-        if hasattr(model, "evals_result_"):
-            evals = model.evals_result_
-            fold_history = {
-                "fold": fold,
-                "best_iteration": model.best_iteration_,
-                "train_loss": evals.get("training", {}).get("multi_logloss", []),
-                "valid_loss": evals.get("valid_0", {}).get("multi_logloss", []),
-            }
-            training_history.append(fold_history)
+        training_history.append(
+            {"fold": fold, "best_iteration": model.best_iteration()}
+        )
         fold_valid_indices.append(valid_idx.copy())
-        valid_proba = normalize_probabilities(
-            model.predict_proba(X_valid, num_iteration=model.best_iteration_)
-        )
+        valid_proba = normalize_probabilities(model.predict_proba(X_valid))
         oof_fold_proba[valid_idx, :, fold] = valid_proba
         oof[valid_idx] = valid_proba
-        test_fold[:, :, fold] = normalize_probabilities(
-            model.predict_proba(X_fold_test, num_iteration=model.best_iteration_)
-        )
+        test_fold[:, :, fold] = normalize_probabilities(model.predict_proba(X_fold_test))
         valid_pred = predictions_from_probabilities(valid_proba, CLASS_NAMES)
         record = classification_metrics(
             y.iloc[valid_idx], valid_pred.tolist(), valid_proba, CLASS_NAMES
@@ -144,7 +131,7 @@ def run_cv_experiment(
             fold + 1,
             splitter.n_splits,
             X_train.shape[1],
-            model.best_iteration_,
+            model.best_iteration(),
             record["balanced_accuracy"],
             record["class_recall"]["at-risk"],
             record["class_recall"]["fit"],
@@ -156,7 +143,7 @@ def run_cv_experiment(
             "experiment_id": experiment_id,
             "fold": fold,
             "features_count": X_train.shape[1],
-            "best_iteration": model.best_iteration_,
+            "best_iteration": model.best_iteration(),
             "balanced_accuracy": record["balanced_accuracy"],
             "macro_f1": record["f1_macro"],
             "class_recall": record["class_recall"],
@@ -169,16 +156,13 @@ def run_cv_experiment(
             "at-risk_recall": record["class_recall"]["at-risk"],
             "fit_recall": record["class_recall"]["fit"],
             "unhealthy_recall": record["class_recall"]["unhealthy"],
-            "best_iteration": model.best_iteration_,
+            "best_iteration": model.best_iteration(),
             "features_count": X_train.shape[1],
         })
-        importances.append(pd.DataFrame({
-            "feature": X_train.columns,
-            "fold": fold,
-            "importance_gain": model.booster_.feature_importance("gain"),
-            "importance_split": model.booster_.feature_importance("split"),
-        }))
-        model.booster_.save_model(output_dir / f"model_fold{fold}.txt")
+        fold_importance = model.feature_importance(X_train.columns.tolist())
+        fold_importance["fold"] = fold
+        importances.append(fold_importance)
+        model.save(output_dir / f"model_fold{fold}")
 
     oof = normalize_probabilities(oof).astype(np.float32)
     test_proba = normalize_probabilities(test_fold.mean(axis=2)).astype(np.float32)
@@ -240,7 +224,11 @@ def run_cv_experiment(
     manifest = {
         "experiment_id": experiment_id,
         "python": platform.python_version(),
-        "lightgbm": lgb.__version__,
+        "model": model_name,
+        "model_library_version": model.library_version,
+        "input_mode": model.input_mode,
+        "categorical_columns": model.categorical_columns,
+        "categorical_feature_count": len(model.categorical_columns),
         "train_rows": len(train),
         "test_rows": len(test),
         "cache_keys": cache_keys,
