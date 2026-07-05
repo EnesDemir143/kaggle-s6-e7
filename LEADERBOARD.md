@@ -17,7 +17,8 @@
 | 6 | E006_tuned | 0.94905 | -0.00055 | V2-Core + log ratios + tuning |
 | 7 | E010_SWEEP_002_tuned | 0.94901 | -0.00059 | Best sweep trial + E002-style tuning |
 | 8 | E008_tuned | 0.94894 | -0.00066 | V2-Core + sqrt-balanced weights + tuning |
-| 9 | E008_argmax | 0.91517 | -0.03443 | V2-Core + sqrt-balanced weights (direct argmax) |
+| 9 | E019_XGBoost_tuned | 0.93971 | -0.00989 | XGBoost V2-Core + sqrt-balanced weights + narrow tuning |
+| 10 | E008_argmax | 0.91517 | -0.03443 | V2-Core + sqrt-balanced weights (direct argmax) |
 
 ---
 
@@ -51,6 +52,16 @@
 | **E016** | — | — | — | Rare-class micro-multiplier (no candidate passed filters) |
 
 > **Note:** E016 produced no submission — all 5 candidates failed the minimum-disagreement filter.
+
+### E019–E023 — Cross-family diversity experiments
+
+| Experiment | OOF Bal Acc | Fold Std | LB | Description |
+|:-----------|------------:|---------:|---:|:------------|
+| E019 | 0.935663 | 0.0015 | **0.93971** | XGBoost V2-Core, sqrt-balanced, tuned; diversity source for E021/E023 |
+
+> E019 changed 6,077 test labels versus E002 tuned (2.05% disagreement) and shifted
+> predominantly from `fit`/`unhealthy` to `at-risk`; it is retained as an ensemble
+> diversity source rather than a standalone contender.
 
 ---
 
@@ -118,6 +129,7 @@ Sorted by OOF balanced accuracy.
 | E016 | Postprocess | Rare-class micro-multiplier (no output) | — | — | — |
 | E017 | Postprocess | Selective margin correction (90 rows) | — | — | — |
 | E018C | Postprocess | 85% E002 + 12% E004 + 3% E006 blend | — | ✅ | **0.94957** |
+| E019 | XGBoost | V2-Core | sqrt_balanced | ✅ | 0.93971 |
 
 ---
 
