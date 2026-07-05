@@ -30,6 +30,7 @@ class ProbabilitySource:
     y_true: np.ndarray
     test_ids: np.ndarray
     multipliers: np.ndarray
+    fold_assignments: np.ndarray | None
 
 
 class NoEligibleCandidateError(ValueError):
@@ -57,6 +58,12 @@ def _load_source(root: Path, name: str) -> ProbabilitySource:
         if multiplier_path.is_file()
         else {label: 1.0 for label in CLASS_NAMES}
     )
+    fold_path = directory / "fold_assignments.csv"
+    fold_assignments = (
+        pd.read_csv(fold_path)["fold_assignment"].to_numpy()
+        if fold_path.is_file()
+        else None
+    )
     return ProbabilitySource(
         name=name,
         oof_proba=np.load(directory / "oof_proba.npy"),
@@ -65,6 +72,7 @@ def _load_source(root: Path, name: str) -> ProbabilitySource:
         y_true=oof["y_true"].to_numpy(),
         test_ids=submission[ID_COL].to_numpy(),
         multipliers=np.array([multiplier_mapping[label] for label in CLASS_NAMES]),
+        fold_assignments=fold_assignments,
     )
 
 
@@ -81,10 +89,98 @@ def _validate_alignment(sources: dict[str, ProbabilitySource]) -> None:
             raise ValueError(f"{source.name} OOF probabilities have a different shape")
         if source.test_proba.shape != reference.test_proba.shape:
             raise ValueError(f"{source.name} test probabilities have a different shape")
+        if (
+            source.fold_assignments is not None
+            and reference.fold_assignments is not None
+            and not np.array_equal(source.fold_assignments, reference.fold_assignments)
+        ):
+            raise ValueError(f"{source.name} fold assignments differ from {reference.name}")
 
 
 def _distribution(labels: np.ndarray) -> dict[str, float]:
     return {label: float(np.mean(labels == label)) for label in CLASS_NAMES}
+
+
+def _risk_summary(base: np.ndarray, candidate: np.ndarray) -> dict[str, Any]:
+    transitions = {
+        f"{source}->{target}": int(np.sum((base == source) & (candidate == target)))
+        for source in CLASS_NAMES
+        for target in CLASS_NAMES
+        if source != target
+    }
+    changed_rows = int(np.sum(base != candidate))
+    at_risk_to_minority = sum(
+        transitions[f"at-risk->{target}"] for target in ("fit", "unhealthy")
+    )
+    minority_to_at_risk = sum(
+        transitions[f"{source}->at-risk"] for source in ("fit", "unhealthy")
+    )
+    base_distribution = _distribution(base)
+    candidate_distribution = _distribution(candidate)
+    drift = {
+        label: candidate_distribution[label] - base_distribution[label]
+        for label in CLASS_NAMES
+    }
+    return {
+        "changed_rows": changed_rows,
+        "transition_matrix": transitions,
+        "at_risk_to_minority": at_risk_to_minority,
+        "minority_to_at_risk": minority_to_at_risk,
+        "e018_like_one_way_push": (
+            at_risk_to_minority > 150 and at_risk_to_minority > 3 * max(1, minority_to_at_risk)
+        ),
+        "base_distribution": base_distribution,
+        "candidate_distribution": candidate_distribution,
+        "distribution_drift": drift,
+        "max_abs_distribution_drift": max(abs(value) for value in drift.values()),
+    }
+
+
+def _fold_metrics(reference: ProbabilitySource, labels: np.ndarray) -> list[dict[str, Any]]:
+    if reference.fold_assignments is None:
+        return []
+    return [
+        {
+            "fold": int(fold),
+            "balanced_accuracy": float(
+                balanced_accuracy_score(
+                    reference.y_true[reference.fold_assignments == fold],
+                    labels[reference.fold_assignments == fold],
+                )
+            ),
+        }
+        for fold in sorted(np.unique(reference.fold_assignments))
+    ]
+
+
+def _confidence_analysis(
+    reference: ProbabilitySource, base_labels: np.ndarray, candidate_labels: np.ndarray
+) -> list[dict[str, Any]]:
+    scores = reference.oof_proba * reference.multipliers
+    ordered = np.sort(scores, axis=1)
+    margins = ordered[:, -1] - ordered[:, -2]
+    disagreement = base_labels != candidate_labels
+    if not np.any(disagreement):
+        return []
+    thresholds = np.quantile(margins[disagreement], [0.25, 0.5, 0.75])
+    buckets = np.digitize(margins, thresholds)
+    rows: list[dict[str, Any]] = []
+    for bucket in range(4):
+        mask = disagreement & (buckets == bucket)
+        if not np.any(mask):
+            continue
+        rows.append(
+            {
+                "margin_quartile": bucket + 1,
+                "rows": int(np.sum(mask)),
+                "mean_e002_margin": float(np.mean(margins[mask])),
+                "e002_accuracy": float(np.mean(base_labels[mask] == reference.y_true[mask])),
+                "candidate_accuracy": float(
+                    np.mean(candidate_labels[mask] == reference.y_true[mask])
+                ),
+            }
+        )
+    return rows
 
 
 def _weights_from_config(spec: dict[str, Any]) -> list[dict[str, float]]:
@@ -407,6 +503,7 @@ def run_candidate_suite(
     sources = {name: _load_source(source_root, name) for name in sorted(required)}
     _validate_alignment(sources)
     reference = sources[config["base_experiment"]]
+    base_oof_labels = apply_multipliers(reference.oof_proba, reference.multipliers)
     base_test_labels = apply_multipliers(reference.test_proba, reference.multipliers)
     output_root.mkdir(parents=True, exist_ok=True)
     rows: list[dict[str, Any]] = []
@@ -445,6 +542,14 @@ def run_candidate_suite(
             continue
         distribution = _distribution(test_labels)
         disagreement = disagreement_rate(base_test_labels, test_labels)
+        risk = _risk_summary(base_test_labels, test_labels)
+        oof_risk = _risk_summary(base_oof_labels, oof_labels)
+        fold_metrics = _fold_metrics(reference, oof_labels)
+        base_fold_metrics = _fold_metrics(reference, base_oof_labels)
+        fold_non_regressions = sum(
+            candidate["balanced_accuracy"] >= base["balanced_accuracy"]
+            for candidate, base in zip(fold_metrics, base_fold_metrics, strict=True)
+        )
         eligibility = spec.get("eligibility", {})
         reasons = eligibility_reasons(
             distribution=distribution,
@@ -454,6 +559,31 @@ def run_candidate_suite(
             oof_score=metrics["oof_balanced_accuracy"],
             min_oof_score=eligibility.get("min_oof_score"),
         )
+        changed_bounds = eligibility.get("changed_rows")
+        if changed_bounds and not changed_bounds[0] <= risk["changed_rows"] <= changed_bounds[1]:
+            reasons.append(
+                f"changed rows {risk['changed_rows']} outside [{changed_bounds[0]}, {changed_bounds[1]}]"
+            )
+        max_push = eligibility.get("max_at_risk_to_minority")
+        if max_push is not None and risk["at_risk_to_minority"] > max_push:
+            reasons.append(f"at-risk to minority {risk['at_risk_to_minority']} above {max_push}")
+        max_reverse = eligibility.get("max_minority_to_at_risk")
+        if max_reverse is not None and risk["minority_to_at_risk"] > max_reverse:
+            reasons.append(f"minority to at-risk {risk['minority_to_at_risk']} above {max_reverse}")
+        max_drift = eligibility.get("max_abs_distribution_drift")
+        if max_drift is not None and risk["max_abs_distribution_drift"] > max_drift:
+            reasons.append(
+                f"distribution drift {risk['max_abs_distribution_drift']:.6f} above {max_drift:.6f}"
+            )
+        min_fold_non_regressions = eligibility.get("min_fold_non_regressions")
+        if (
+            min_fold_non_regressions is not None
+            and fold_metrics
+            and fold_non_regressions < min_fold_non_regressions
+        ):
+            reasons.append(
+                f"fold non-regressions {fold_non_regressions} below {min_fold_non_regressions}"
+            )
         row = {
             "experiment": experiment,
             "output_dir": spec["output_dir"],
@@ -463,11 +593,35 @@ def run_candidate_suite(
             **{f"test_share_{label}": distribution[label] for label in CLASS_NAMES},
             "reasons": " | ".join(reasons),
         }
-        submission = pd.DataFrame({ID_COL: reference.test_ids, TARGET_COL: test_labels})
-        submission.to_csv(output / spec["submission_name"], index=False)
+        submission_path = output / spec["submission_name"]
+        if reasons:
+            if submission_path.exists():
+                submission_path.unlink()
+            (output / "rejection_reasons.json").write_text(
+                json.dumps(reasons, indent=2) + "\n"
+            )
+        else:
+            submission = pd.DataFrame({ID_COL: reference.test_ids, TARGET_COL: test_labels})
+            submission.to_csv(submission_path, index=False)
         (output / "config.json").write_text(json.dumps(spec, indent=2) + "\n")
+        (output / "risk_summary.json").write_text(json.dumps(risk, indent=2) + "\n")
         (output / "metrics.json").write_text(
-            json.dumps({**metrics, "test_distribution": distribution, "disagreement_vs_E002": disagreement}, indent=2)
+            json.dumps(
+                {
+                    **metrics,
+                    "test_distribution": distribution,
+                    "disagreement_vs_E002": disagreement,
+                    "risk_summary": risk,
+                    "oof_risk_summary": oof_risk,
+                    "fold_metrics": fold_metrics,
+                    "base_fold_metrics": base_fold_metrics,
+                    "fold_non_regressions": fold_non_regressions,
+                    "disagreement_confidence": _confidence_analysis(
+                        reference, base_oof_labels, oof_labels
+                    ),
+                },
+                indent=2,
+            )
             + "\n"
         )
         eligibility_payload = {"eligible": not reasons, "reasons": reasons, "report_row": row}
