@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp", required=True)
     parser.add_argument("--config", type=Path, default=Path("configs/experiments.yaml"))
-    parser.add_argument("--model-config", type=Path, default=Path("configs/lgbm_base.yaml"))
+    parser.add_argument("--model-config", type=Path)
     parser.add_argument("--train-path", type=Path, default=Path("data/playground-series-s6e7/train.csv"))
     parser.add_argument("--test-path", type=Path, default=Path("data/playground-series-s6e7/test.csv"))
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/experiments"))
@@ -51,14 +51,20 @@ def main() -> None:
     args = parse_args()
     log.info("Experiment: %s | dry_run=%s | no_cache=%s", args.exp, args.dry_run, args.no_cache)
     experiment = resolve_experiment(args.exp, args.config)
-    if experiment.get("model") != "lightgbm":
+    if experiment.get("model") not in {"lightgbm", "xgboost", "catboost"}:
         raise ValueError(f"{args.exp} is a postprocess-only experiment")
     log.info("Loading data: train=%s test=%s", args.train_path, args.test_path)
     train, test = load_cached_csv(args.train_path), load_cached_csv(args.test_path)
     log.info("Train rows: %d | Test rows: %d | Features: %d", len(train), len(test), len(train.columns) - 2)
     log.info("Validating schema")
     validate_schema(train, test)
-    model_params = load_yaml(args.model_config)
+    default_configs = {
+        "lightgbm": Path("configs/lgbm_base.yaml"),
+        "xgboost": Path("configs/xgb_v2_core.yaml"),
+        "catboost": Path("configs/catboost_v2_core.yaml"),
+    }
+    model_config = args.model_config or default_configs[experiment["model"]]
+    model_params = load_yaml(model_config)
     output_root = Path("outputs/dry_runs") if args.dry_run else args.output_dir
     output = output_root / args.exp
     if output.exists() and (output / "metrics.json").exists() and not args.force:
@@ -67,9 +73,16 @@ def main() -> None:
         log.info("Dry-run mode: subsampling to 3000 train / 1000 test rows, reducing n_estimators")
         train = stratified_sample(train, 3000, int(experiment["seed"]))
         test = test.head(1000).copy()
-        model_params["n_estimators"] = 20
-        model_params["early_stopping_rounds"] = 5
-        model_params["min_child_samples"] = 20
+        if experiment["model"] == "catboost":
+            model_params["iterations"] = 30
+            model_params["od_wait"] = 5
+        else:
+            model_params["n_estimators"] = 20
+            model_params["early_stopping_rounds"] = 5
+            if experiment["model"] == "xgboost":
+                model_params["min_child_weight"] = 5
+        if experiment["model"] == "lightgbm":
+            model_params["min_child_samples"] = 20
     output.mkdir(parents=True, exist_ok=True)
     persisted_config = {**experiment, "model_params": model_params, "dry_run": args.dry_run}
     (output / "config.json").write_text(json.dumps(persisted_config, indent=2) + "\n")
