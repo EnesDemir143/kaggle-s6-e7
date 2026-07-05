@@ -1,0 +1,51 @@
+base_experiment: E002
+report_stem: e021_e023_eligibility_report
+
+experiments:
+  E021:
+    kind: blend_tuned
+    output_dir: E021
+    sources: {E002: 0.95, E019: 0.05}
+    multiplier_source: E002
+    scale_pairs: &narrow_grid
+      - [1.000, 1.000]
+      - [1.000, 1.005]
+      - [1.000, 1.010]
+      - [1.005, 1.000]
+      - [1.005, 1.005]
+      - [1.005, 1.010]
+      - [1.010, 1.000]
+      - [1.010, 1.005]
+      - [1.010, 1.010]
+    submission_name: submission_E021_tuned.csv
+    eligibility: &micro_gate
+      min_oof_score: 0.94858418
+      changed_rows: [30, 150]
+      max_at_risk_to_minority: 150
+      max_minority_to_at_risk: 30
+      max_abs_distribution_drift: 0.001
+      min_fold_non_regressions: 2
+
+  E022:
+    kind: blend_tuned
+    output_dir: E022
+    sources: {E002: 0.97, E020: 0.03}
+    multiplier_source: E002
+    scale_pairs: *narrow_grid
+    submission_name: submission_E022_tuned.csv
+    eligibility: *micro_gate
+
+  E023:
+    kind: blend_tuned
+    output_dir: E023
+    sources: {E002: 0.94, E019: 0.03, E020: 0.03}
+    multiplier_source: E002
+    scale_pairs: *narrow_grid
+    submission_name: submission_E023_tuned.csv
+    eligibility:
+      min_oof_score: 0.94858418
+      changed_rows: [50, 180]
+      max_at_risk_to_minority: 150
+      max_minority_to_at_risk: 30
+      max_abs_distribution_drift: 0.001
+      min_fold_non_regressions: 2

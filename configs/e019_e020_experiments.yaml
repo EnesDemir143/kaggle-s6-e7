@@ -1,0 +1,41 @@
+E019:
+  description: XGBoost V2-Core diversity source
+  model: xgboost
+  n_splits: 3
+  seed: 42
+  features: &v2_core
+    missing_flags: true
+    missing_count: true
+    ratios: true
+    categorical_interactions: true
+    gender_activity: false
+    outlier_flags: true
+    outlier_count: true
+    rule_flags: false
+    clipping: false
+    log_ratio: false
+  training:
+    class_weight_mode: sqrt_balanced
+  postprocess:
+    multipliers: true
+
+E020:
+  description: CatBoost V2-Core diversity source
+  model: catboost
+  n_splits: 3
+  seed: 42
+  features: *v2_core
+  training:
+    class_weight_mode: sqrt_balanced
+  postprocess:
+    multipliers: true
+
+E019_ALT:
+  description: Conditional XGBoost fallback; disabled by default
+  inherit: E019
+  enabled_by_default: false
+
+E020_ALT:
+  description: Conditional CatBoost fallback; disabled by default
+  inherit: E020
+  enabled_by_default: false
