@@ -5,6 +5,7 @@ description = "EDA and preprocessing decision workspace for Kaggle Playground Se
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "catboost>=1.2.8,<2",
     "ipykernel>=6.29",
     "jupyter>=1.1",
     "lightgbm>=4.6,<5",
@@ -19,6 +20,7 @@ dependencies = [
     "scipy>=1.14",
     "seaborn>=0.13",
     "tqdm>=4.68.3",
+    "xgboost>=3.0,<4",
 ]
 
 [dependency-groups]
@@ -39,5 +41,5 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 
 [[tool.mypy.overrides]]
-module = ["pandas", "scipy", "scipy.*", "sklearn", "sklearn.*", "joblib"]
+module = ["pandas", "scipy", "scipy.*", "sklearn", "sklearn.*", "joblib", "xgboost", "catboost", "catboost.*"]
 ignore_missing_imports = true
