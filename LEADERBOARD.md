@@ -11,12 +11,13 @@
 |-----:|:-----------|----------:|:-------|:------------|
 | 1 | **E002_tuned** | **0.94960** | — | V2-Core + class multiplier tuning |
 | 2 | E011_blend_60_30_10 | 0.94957 | -0.00003 | 60% E002 + 30% E004 + 10% E006 + tuning |
-| 3 | E009_blend_75_25 | 0.94948 | -0.00012 | 75% E002 + 25% E004 + tuning |
-| 4 | E004_tuned | 0.94941 | -0.00019 | V2-Core + rule flags + tuning |
-| 5 | E006_tuned | 0.94905 | -0.00055 | V2-Core + log ratios + tuning |
-| 6 | E010_SWEEP_002_tuned | 0.94901 | -0.00059 | Best sweep trial + E002-style tuning |
-| 7 | E008_tuned | 0.94894 | -0.00066 | V2-Core + sqrt-balanced weights + tuning |
-| 8 | E008_argmax | 0.91517 | -0.03443 | V2-Core + sqrt-balanced weights (direct argmax) |
+| 2 | **E018C_blend_85_12_03** | **0.94957** | -0.00003 | 85% E002 + 12% E004 + 3% E006 + aggressive multiplier (×1.04) |
+| 4 | E009_blend_75_25 | 0.94948 | -0.00012 | 75% E002 + 25% E004 + tuning |
+| 5 | E004_tuned | 0.94941 | -0.00019 | V2-Core + rule flags + tuning |
+| 6 | E006_tuned | 0.94905 | -0.00055 | V2-Core + log ratios + tuning |
+| 7 | E010_SWEEP_002_tuned | 0.94901 | -0.00059 | Best sweep trial + E002-style tuning |
+| 8 | E008_tuned | 0.94894 | -0.00066 | V2-Core + sqrt-balanced weights + tuning |
+| 9 | E008_argmax | 0.91517 | -0.03443 | V2-Core + sqrt-balanced weights (direct argmax) |
 
 ---
 
@@ -34,10 +35,11 @@
 | E003 | 0.8768 ± 0.0015 | 0.991 | 0.830 | 0.810 | 64 | V2-Core + gender_activity |
 | E005 | 0.8767 ± 0.0017 | 0.991 | 0.829 | 0.810 | 63 | V2-Core + clipping |
 
-### E009–E017 — Postprocess experiments (blend / multiplier / correction)
+### E009–E018 — Postprocess experiments (blend / multiplier / correction)
 
 | Experiment | OOF Bal Acc | Δ E002 OOF | LB | Description |
 |:-----------|------------:|:-----------|:---|:------------|
+| **E018C** | **0.948809** | +0.000225 | **0.94957** | 85% E002 + 12% E004 + 3% E006 + aggressive multiplier (×1.04) |
 | **E017** | **0.948658** | +0.000074 | — | Selective margin correction (E004 at-risk→unhealthy, 90 rows) |
 | **E014** | **0.948654** | +0.000070 | — | E011 multiplier softened toward E002 (173 rows changed) |
 | **E011** | **0.948654** | +0.000069 | **0.94957** | 60/30/10 blend + tuned |
@@ -115,6 +117,7 @@ Sorted by OOF balanced accuracy.
 | E015 | Postprocess | 70% E002 + 20% E004 + 10% E006 blend | — | — | — |
 | E016 | Postprocess | Rare-class micro-multiplier (no output) | — | — | — |
 | E017 | Postprocess | Selective margin correction (90 rows) | — | — | — |
+| E018C | Postprocess | 85% E002 + 12% E004 + 3% E006 blend | — | ✅ | **0.94957** |
 
 ---
 
