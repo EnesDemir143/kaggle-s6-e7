@@ -12,4 +12,4 @@ od_wait: 250
 thread_count: 6
 random_seed: 42
 allow_writing_files: false
-verbose: false
+verbose: 100

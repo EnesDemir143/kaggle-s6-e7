@@ -189,7 +189,6 @@ class CatBoostAdapter:
             "y": y_train,
             "sample_weight": sample_weight,
             "eval_set": (valid, y_valid),
-            "verbose": False,
         }
         if self.categorical_columns:
             kwargs["cat_features"] = self.categorical_columns
