@@ -1,0 +1,16 @@
+objective: multi:softprob
+num_class: 3
+eval_metric: mlogloss
+tree_method: hist
+max_depth: 4
+learning_rate: 0.03
+n_estimators: 6000
+min_child_weight: 100
+subsample: 0.90
+colsample_bytree: 0.90
+reg_lambda: 10.0
+reg_alpha: 0.1
+max_bin: 256
+early_stopping_rounds: 250
+n_jobs: 6
+random_state: 42
